@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iomanip>
 #include <cmath>
+#include <matrix.h>
 
 #pragma pack (push, 1)
 struct Header 
