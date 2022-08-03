@@ -71,8 +71,8 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
-    ofstream output("bitmap_output.bmp", ios_base::binary);
+    ifstream image(argv[1], ios_base::in | ios_base::binary);
+    ofstream output(argv[2], ios_base::binary);
     if (!image.is_open()) 
     {
         cout << "Image did not open" << endl;

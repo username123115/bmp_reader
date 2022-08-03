@@ -2,7 +2,8 @@
 #include <fstream>
 #include <iomanip>
 #include <cmath>
-#include <matrix.h>
+#include "matrix.h"
+//#include "matrix.cpp"
 
 #pragma pack (push, 1)
 struct Header 
@@ -72,6 +73,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
+    Matrix m(2, 2, 0.0);
     ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
