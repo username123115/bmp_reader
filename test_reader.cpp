@@ -73,7 +73,6 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    Matrix m(2, 2, 0.0);
     ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
