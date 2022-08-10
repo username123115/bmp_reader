@@ -119,6 +119,9 @@ int main(int argc, char* argv[])
             {
                 read_col_count = round_bytes(info_header.w, info_header.bpp);
             }
+            uint32_t read_mask = pow(2, info_header.bpp) - 1;
+            int bytes = info_header.bpp / 8;
+            if (bytes < 1) {bytes = 1;}
 
             // image.read((char *)&pixel_array, sizeof(pixel_array));
             for (int i = 0; i < info_header.h; i++)
@@ -126,12 +129,14 @@ int main(int argc, char* argv[])
                 uint32_t padding_buffer = 0;
                 for (int j = 0; j < read_col_count; j++)
                 {
-                    uint32_t content = 0;
-                    int bytes = info_header.h / 8;
-                    if (bytes < 1) {bytes = 1;}
-                    image.read((char*)&content, 3);
+                    uint32_t content = 0;        
+                    image.read((char*)&content, bytes);
+                    for (int pixel = 0; pixel < reads_per_cycle; pixel++)
+                    {
+                        (*image_matrix)(i, j + pixel) = (content >> (pixel * info_header.bpp)) & read_mask;
+                    }
                     
-                    (*image_matrix)(i, j) = content;
+                    // (*image_matrix)(i, j) = content;
                 }
                 image.read((char*)&padding_buffer, padding);
                 // for (int i = 0; i < words; i++)
