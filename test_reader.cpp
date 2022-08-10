@@ -3,7 +3,6 @@
 #include <iomanip>
 #include <cmath>
 #include "matrix.h"
-//#include "matrix.cpp"
 
 #pragma pack (push, 1)
 struct Header 

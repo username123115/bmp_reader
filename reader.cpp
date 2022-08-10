@@ -28,23 +28,9 @@ struct BMP_info_header
     uint32_t color_table_colors;
     uint32_t import_colors;
 };
-int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
 
-int max(int a, int b) 
-{
-    if (a > b) {
-        return a;
-    }
-    else {
-        return b;
-    }
-}
-/*I assume that when size of one image row does not make a full byte 
-e.g 3 pixels in 1 bpp that the remainder still takes up space of a 
-byte and as such padding still stays an integer amount of bytes
-*/
 int get_padding(int w, int bpp)
 {
     //get rounded to higher byte count of row (should only apply to 1-4 bpp images)
