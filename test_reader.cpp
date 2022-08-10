@@ -72,7 +72,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -104,8 +104,11 @@ int main(int argc, char* argv[])
                 image.read((char *)&color_table, sizeof(color_table));
             }
             
+
+            //reading to a matrix now
+            Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
+            
             image.read((char *)&pixel_array, sizeof(pixel_array));
-            //start proccessing
             for (int j = 0; j < info_header.h; j++)
             {
                 for (int i = 0; i < words; i++)
@@ -122,13 +125,18 @@ int main(int argc, char* argv[])
                 output.write((char*)&color_table, sizeof(color_table));
             }
             output.write((char*)pixel_array, sizeof(pixel_array));
-            image.close();
+            
             cout << sizeof(image_header) << endl;
             cout << sizeof(info_header) << endl;
             cout << sizeof(color_table) << endl;
             cout << sizeof(pixel_array) << endl;
             cout << info_header.w << " " << info_header.h << endl;
             cout << round_bytes(info_header.w, info_header.bpp) << padding << endl;
+            
+            //clean up
+            image.close();
+            output.close();
+            delete image_matrix;
             return 0;
         }
         else 
