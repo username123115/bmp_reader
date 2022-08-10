@@ -72,7 +72,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
+    ifstream image("1bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -127,10 +127,34 @@ int main(int argc, char* argv[])
             //output.write((char*)pixel_array, sizeof(pixel_array));
             for (int i = 0; i < info_header.h; i++)
             {
-                for (int j = 0; j < info_header.w; j++)
+
+                // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
+
+                int writes_per_cycle = 1;
+                if (info_header.bpp < 8)
                 {
-                    uint32_t contents = (*image_matrix)(i, j);
-                    output.write((char *)&contents, info_header.bpp / 8);
+                    writes_per_cycle = 8 / info_header.bpp; 
+                }
+                uint32_t count = info_header.w;
+                if (writes_per_cycle != 1)
+                {
+                    count = round_bytes(info_header.w, info_header.bpp);
+                }
+
+
+                for (int j = 0; j < count; j++)
+                {
+                    uint32_t contents = 0;
+                    for (int pixel = 0; pixel < writes_per_cycle; pixel++)
+                    {
+                        contents << info_header.bpp;
+                        contents += ((*image_matrix)(i, j + pixel));
+                        // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
+                    }
+
+                    int bytes_out = info_header.bpp / 8;
+                    if (bytes_out < 1) {bytes_out = 1;}
+                    output.write((char *)&contents, bytes_out);
                 }
                 for (int k = 0; k < padding; k++)
                 {
