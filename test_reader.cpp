@@ -72,7 +72,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("1bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -107,14 +107,37 @@ int main(int argc, char* argv[])
 
             //reading to a matrix now
             Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
+            Matrix<double> transformation("transformation.txt");
 
-            image.read((char *)&pixel_array, sizeof(pixel_array));
-            for (int j = 0; j < info_header.h; j++)
+            int reads_per_cycle = 1;
+            if (info_header.bpp < 8)
             {
-                for (int i = 0; i < words; i++)
+                reads_per_cycle = 8 / info_header.bpp; 
+            }
+            uint32_t read_col_count = info_header.w;
+            if (reads_per_cycle != 1)
+            {
+                read_col_count = round_bytes(info_header.w, info_header.bpp);
+            }
+
+            // image.read((char *)&pixel_array, sizeof(pixel_array));
+            for (int i = 0; i < info_header.h; i++)
+            {
+                uint32_t padding_buffer = 0;
+                for (int j = 0; j < read_col_count; j++)
                 {
-                    pixel_array[j][i] = (~pixel_array[j][i]);
+                    uint32_t content = 0;
+                    int bytes = info_header.h / 8;
+                    if (bytes < 1) {bytes = 1;}
+                    image.read((char*)&content, 3);
+                    
+                    (*image_matrix)(i, j) = content;
                 }
+                image.read((char*)&padding_buffer, padding);
+                // for (int i = 0; i < words; i++)
+                // {
+                //     pixel_array[j][i] = (~pixel_array[j][i]);
+                // }
             }
 
             //end proccessing
@@ -125,22 +148,21 @@ int main(int argc, char* argv[])
                 output.write((char*)&color_table, sizeof(color_table));
             }
             //output.write((char*)pixel_array, sizeof(pixel_array));
+
+            // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
+            int writes_per_cycle = 1;
+            if (info_header.bpp < 8)
+            {
+                writes_per_cycle = 8 / info_header.bpp; 
+            }
+            uint32_t count = info_header.w;
+            if (writes_per_cycle != 1)
+            {
+                count = round_bytes(info_header.w, info_header.bpp);
+            }
+
             for (int i = 0; i < info_header.h; i++)
             {
-
-                // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
-
-                int writes_per_cycle = 1;
-                if (info_header.bpp < 8)
-                {
-                    writes_per_cycle = 8 / info_header.bpp; 
-                }
-                uint32_t count = info_header.w;
-                if (writes_per_cycle != 1)
-                {
-                    count = round_bytes(info_header.w, info_header.bpp);
-                }
-
 
                 for (int j = 0; j < count; j++)
                 {
