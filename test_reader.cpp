@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 
             //reading to a matrix now
             Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
-            
+
             image.read((char *)&pixel_array, sizeof(pixel_array));
             for (int j = 0; j < info_header.h; j++)
             {
@@ -124,8 +124,22 @@ int main(int argc, char* argv[])
             {
                 output.write((char*)&color_table, sizeof(color_table));
             }
-            output.write((char*)pixel_array, sizeof(pixel_array));
-            
+            //output.write((char*)pixel_array, sizeof(pixel_array));
+            for (int i = 0; i < info_header.h; i++)
+            {
+                for (int j = 0; j < info_header.w; j++)
+                {
+                    uint32_t contents = (*image_matrix)(i, j);
+                    output.write((char *)&contents, info_header.bpp / 8);
+                }
+                for (int k = 0; k < padding; k++)
+                {
+                    char zeros = 0;
+                    output.write((char*)&zeros, sizeof(char));
+                }
+            }
+
+
             cout << sizeof(image_header) << endl;
             cout << sizeof(info_header) << endl;
             cout << sizeof(color_table) << endl;
