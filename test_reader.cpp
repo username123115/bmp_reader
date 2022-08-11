@@ -32,10 +32,12 @@ struct BMP_info_header
 int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
-void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &);
-void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &);
-uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
+//potentially declare some variables as constants to avoid confusion in the future.
+void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes empty matrix with dimensions specified and reads into it, file pointer must be at pixel array
+void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
+void apply_transformation(Matrix<float>, Matrix<uint32_t>, Matrix<uint32_t>); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 
+uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
 
 uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
 {
@@ -120,7 +122,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
     {
         count = round_bytes(w, bpp);
     }
-
+    // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
     for (int i = 0; i < h; i++)
     {
 
@@ -187,7 +189,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("bitmap_test.bmp", ios_base::in | ios_base::binary);
+    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -238,13 +240,6 @@ int main(int argc, char* argv[])
                     Matrix<double> in_coordinates = out_coordinates * inverse_transform;
                     double in_x = in_coordinates(0, 0);
                     double in_y = in_coordinates(0, 1);
-                    /*
-                            y2
-                        x1  y  x2
-                            y1
-
-                    */
-
                     (*output_matrix)(i, j) = billinear_interpolation(in_x, in_y, (*image_matrix));
                     // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
                 }
@@ -252,13 +247,13 @@ int main(int argc, char* argv[])
             std::cout << "finished interpolation" << std::endl;
 
             //test to see matrix structure
-            for (int i = 0; i < 25; i++)
-            {
-                for (int j = 0; j < 10; j++)
-                {
-                    (*output_matrix)(i, j) = pow(2, info_header.bpp) / 2;
-                }
-            }
+            // for (int i = 0; i < 25; i++)
+            // {
+            //     for (int j = 0; j < 10; j++)
+            //     {
+            //         (*output_matrix)(i, j) = pow(2, info_header.bpp) / 2;
+            //     }
+            // }
             
 
 
@@ -270,42 +265,7 @@ int main(int argc, char* argv[])
                 output.write((char*)&color_table, sizeof(color_table));
             }
             //output.write((char*)pixel_array, sizeof(pixel_array));
-
-            // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
-            int writes_per_cycle = 1;
-            if (info_header.bpp < 8)
-            {
-                writes_per_cycle = 8 / info_header.bpp; 
-            }
-            uint32_t count = info_header.w;
-            if (writes_per_cycle != 1)
-            {
-                count = round_bytes(info_header.w, info_header.bpp);
-            }
-
-            for (int i = 0; i < info_header.h; i++)
-            {
-
-                for (int j = 0; j < count; j++)
-                {
-                    uint32_t contents = 0;
-                    for (int pixel = 0; pixel < writes_per_cycle; pixel++)
-                    {
-                        contents << info_header.bpp;
-                        contents += ((*output_matrix)(i, j + pixel));
-                        // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
-                    }
-
-                    int bytes_out = info_header.bpp / 8;
-                    if (bytes_out < 1) {bytes_out = 1;}
-                    output.write((char *)&contents, bytes_out);
-                }
-                for (int k = 0; k < padding; k++)
-                {
-                    char zeros = 0;
-                    output.write((char*)&zeros, sizeof(char));
-                }
-            }
+            write_from_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*output_matrix), output);
 
 
             cout << sizeof(image_header) << endl;
