@@ -32,6 +32,41 @@ struct BMP_info_header
 int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
+uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
+
+uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
+{
+    float debugx = 0.1;
+    float debugy = 1.3;
+    int x_low = floor(x);
+    int y_low = floor(y) + 1; //the higher the y value the lower down in the picture
+    double xleft = x - x_low;
+    double xright = 1 - xleft;
+    double ybottom = y_low - y;
+    double ytop = 1 - ybottom;
+    uint32_t ll, lr, ul, ur;
+    unsigned maxw = image.getCols();
+    unsigned maxh = image.getRows();
+    // return 0;
+    if ((x_low < 1) or (x_low > maxw - 1))
+    {
+        return 0;
+    }
+    if ((y_low < 1) or (y_low > maxh - 2))
+    {
+        return 0;
+    }
+    ll = image(y_low + 1, x_low - 1);
+    ul = image(y_low - 1, x_low - 1);
+    lr = image(y_low + 1, x_low + 1);
+    ur = image(y_low - 1, x_low + 1);
+    uint32_t sum = (ll * xright * ytop) + (ul * xright * ybottom) + (lr * xleft * ytop) + (ur * xleft * ybottom);
+    return sum;
+    // return ll;
+
+
+}
+
 
 int max(int a, int b) 
 {
@@ -72,7 +107,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
+    ifstream image("swirlyline.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -107,7 +142,9 @@ int main(int argc, char* argv[])
 
             //reading to a matrix now
             Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
+            Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
+            Matrix<double> inverse_transform = transformation.get_inverse();
 
             int reads_per_cycle = 1;
             if (info_header.bpp < 8)
@@ -144,8 +181,33 @@ int main(int argc, char* argv[])
                 //     pixel_array[j][i] = (~pixel_array[j][i]);
                 // }
             }
+            //proccessing in the middle
+            for (int i = 0; i < output_matrix->getRows(); i++)
+            {
+                for (int j = 0; j < output_matrix->getCols(); j++)
+                {
+                    Matrix<double> out_coordinates(2, 2, 0.0);
+                    out_coordinates(0, 0) = j;
+                    out_coordinates(1, 1) = i;
+                    Matrix<double> in_coordinates = out_coordinates * inverse_transform;
+                    /*
+                            y2
+                        x1  y  x2
+                            y1
 
-            //end proccessing
+                    */
+
+                    double in_x = in_coordinates(0, 0) + in_coordinates(0, 1);
+                    double in_y = in_coordinates(1, 1) + in_coordinates(1, 0);
+                    (*output_matrix)(i, j) = billinear_interpolation(in_x, in_y, (*image_matrix));
+                    // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
+                }
+            }
+            std::cout << "finished interpolation" << std::endl;
+
+
+
+            //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
             if (color_table_entrys != 0)
@@ -175,7 +237,7 @@ int main(int argc, char* argv[])
                     for (int pixel = 0; pixel < writes_per_cycle; pixel++)
                     {
                         contents << info_header.bpp;
-                        contents += ((*image_matrix)(i, j + pixel));
+                        contents += ((*output_matrix)(i, j + pixel));
                         // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
                     }
 
@@ -202,6 +264,7 @@ int main(int argc, char* argv[])
             image.close();
             output.close();
             delete image_matrix;
+            delete output_matrix;
             return 0;
         }
         else 
