@@ -32,6 +32,7 @@ struct BMP_info_header
 int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
+void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &);
 uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
 
 uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
@@ -65,6 +66,45 @@ uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
     return ll;
 
 
+}
+
+void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<uint32_t> &image, ifstream &file)
+{
+    int reads_per_cycle = 1;
+    if (bpp < 8)
+    {
+        reads_per_cycle = 8 / bpp; 
+    }
+    uint32_t read_col_count = w;
+    if (reads_per_cycle != 1)
+    {
+        read_col_count = round_bytes(w, bpp);
+    }
+    uint32_t read_mask = pow(2, bpp) - 1;
+    int bytes = bpp / 8;
+    if (bytes < 1) {bytes = 1;}
+
+    // image.read((char *)&pixel_array, sizeof(pixel_array));
+    for (int i = 0; i < h; i++)
+    {
+        uint32_t padding_buffer = 0;
+        for (int j = 0; j < read_col_count; j++)
+        {
+            uint32_t content = 0;        
+            file.read((char*)&content, bytes);
+            for (int pixel = 0; pixel < reads_per_cycle; pixel++)
+            {
+                image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask;
+            }
+            
+            // (*image_matrix)(i, j) = content;
+        }
+        file.read((char*)&padding_buffer, padding);
+        // for (int i = 0; i < words; i++)
+        // {
+        //     pixel_array[j][i] = (~pixel_array[j][i]);
+        // }
+    }
 }
 
 
@@ -145,42 +185,8 @@ int main(int argc, char* argv[])
             Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
             Matrix<double> inverse_transform = transformation.get_inverse();
+            read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
-            int reads_per_cycle = 1;
-            if (info_header.bpp < 8)
-            {
-                reads_per_cycle = 8 / info_header.bpp; 
-            }
-            uint32_t read_col_count = info_header.w;
-            if (reads_per_cycle != 1)
-            {
-                read_col_count = round_bytes(info_header.w, info_header.bpp);
-            }
-            uint32_t read_mask = pow(2, info_header.bpp) - 1;
-            int bytes = info_header.bpp / 8;
-            if (bytes < 1) {bytes = 1;}
-
-            // image.read((char *)&pixel_array, sizeof(pixel_array));
-            for (int i = 0; i < info_header.h; i++)
-            {
-                uint32_t padding_buffer = 0;
-                for (int j = 0; j < read_col_count; j++)
-                {
-                    uint32_t content = 0;        
-                    image.read((char*)&content, bytes);
-                    for (int pixel = 0; pixel < reads_per_cycle; pixel++)
-                    {
-                        (*image_matrix)(i, j + pixel) = (content >> (pixel * info_header.bpp)) & read_mask;
-                    }
-                    
-                    // (*image_matrix)(i, j) = content;
-                }
-                image.read((char*)&padding_buffer, padding);
-                // for (int i = 0; i < words; i++)
-                // {
-                //     pixel_array[j][i] = (~pixel_array[j][i]);
-                // }
-            }
             //proccessing in the middle
             for (int i = 0; i < output_matrix->getRows(); i++)
             {
@@ -205,6 +211,15 @@ int main(int argc, char* argv[])
             }
             std::cout << "finished interpolation" << std::endl;
 
+            //test to see matrix structure
+            for (int i = 0; i < 25; i++)
+            {
+                for (int j = 0; j < 10; j++)
+                {
+                    (*output_matrix)(i, j) = pow(2, info_header.bpp) / 2;
+                }
+            }
+            
 
 
             //writing to the output
