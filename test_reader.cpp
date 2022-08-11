@@ -33,7 +33,9 @@ int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
 void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &);
+void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &);
 uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
+
 
 uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
 {
@@ -106,6 +108,44 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
         // }
     }
 }
+void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<uint32_t> &image, ofstream &file)
+{
+    int writes_per_cycle = 1;
+    if (bpp < 8)
+    {
+        writes_per_cycle = 8 / bpp; 
+    }
+    uint32_t count = w;
+    if (writes_per_cycle != 1)
+    {
+        count = round_bytes(w, bpp);
+    }
+
+    for (int i = 0; i < h; i++)
+    {
+
+        for (int j = 0; j < count; j++)
+        {
+            uint32_t contents = 0;
+            for (int pixel = 0; pixel < writes_per_cycle; pixel++)
+            {
+                contents << bpp;
+                contents += (image(i, j + pixel));
+                // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
+            }
+
+            int bytes_out = bpp / 8;
+            if (bytes_out < 1) {bytes_out = 1;}
+            file.write((char *)&contents, bytes_out);
+        }
+        for (int k = 0; k < padding; k++)
+        {
+            char zeros = 0;
+            file.write((char*)&zeros, sizeof(char));
+        }
+    }
+}
+
 
 
 int max(int a, int b) 
@@ -147,7 +187,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("swirlyline.bmp", ios_base::in | ios_base::binary);
+    ifstream image("bitmap_test.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
