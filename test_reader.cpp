@@ -61,8 +61,8 @@ uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
     lr = image(y_low + 1, x_low + 1);
     ur = image(y_low - 1, x_low + 1);
     uint32_t sum = (ll * xright * ytop) + (ul * xright * ybottom) + (lr * xleft * ytop) + (ur * xleft * ybottom);
-    return sum;
-    // return ll;
+    // return sum;
+    return ll;
 
 
 }
@@ -186,10 +186,12 @@ int main(int argc, char* argv[])
             {
                 for (int j = 0; j < output_matrix->getCols(); j++)
                 {
-                    Matrix<double> out_coordinates(2, 2, 0.0);
-                    out_coordinates(0, 0) = j;
-                    out_coordinates(1, 1) = i;
+                    Matrix<double> out_coordinates(1, 2, 0.0);
+                    out_coordinates(0, 0) = j; //x coordinate
+                    out_coordinates(0, 1) = i; //y coordinate
                     Matrix<double> in_coordinates = out_coordinates * inverse_transform;
+                    double in_x = in_coordinates(0, 0);
+                    double in_y = in_coordinates(0, 1);
                     /*
                             y2
                         x1  y  x2
@@ -197,8 +199,6 @@ int main(int argc, char* argv[])
 
                     */
 
-                    double in_x = in_coordinates(0, 0) + in_coordinates(0, 1);
-                    double in_y = in_coordinates(1, 1) + in_coordinates(1, 0);
                     (*output_matrix)(i, j) = billinear_interpolation(in_x, in_y, (*image_matrix));
                     // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
                 }
