@@ -36,6 +36,7 @@ int round_bytes(int, int);
 void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes empty matrix with dimensions specified and reads into it, file pointer must be at pixel array
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
 void apply_transformation(Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
+void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
 
 uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
 uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
@@ -164,6 +165,19 @@ void apply_transformation(Matrix<double> &transformation, Matrix<uint32_t> &orig
         }
     }
 }
+void apply_test_watermark(Matrix<uint32_t> &image, uint16_t bpp = 1)
+{
+    if ((image.getCols() >= 25) && (image.getRows() >= 10))
+    {
+        for (int i = 0; i < 25; i++)
+        {
+            for (int j = 0; j < 10; j++)
+            {
+                image(i, j) = pow(2, bpp) / 2;
+            }
+        }
+    }
+}
 
 
 int max(int a, int b) 
@@ -245,16 +259,8 @@ int main(int argc, char* argv[])
 
             //proccessing in the middle
             apply_transformation(transformation, *image_matrix, *output_matrix);
-            std::cout << "finished interpolation" << std::endl;
-
             //test to see matrix structure
-            // for (int i = 0; i < 25; i++)
-            // {
-            //     for (int j = 0; j < 10; j++)
-            //     {
-            //         (*output_matrix)(i, j) = pow(2, info_header.bpp) / 2;
-            //     }
-            // }
+            apply_test_watermark((*output_matrix), info_header.bpp);
             //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
