@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
             }
             
 
-            //reading to a matrix now
+            //reading to a matrix
             Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
@@ -264,6 +264,7 @@ int main(int argc, char* argv[])
             //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
+
             if (color_table_entrys != 0)
             {
                 output.write((char*)&color_table, sizeof(color_table));
