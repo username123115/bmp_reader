@@ -35,10 +35,9 @@ int round_bytes(int, int);
 //potentially declare some variables as constants to avoid confusion in the future.
 void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes empty matrix with dimensions specified and reads into it, file pointer must be at pixel array
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
-void apply_transformation(Matrix<float>, Matrix<uint32_t>, Matrix<uint32_t>); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
+void apply_transformation(Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 
 uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
-
 uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
 {
     float debugx = 0.1;
@@ -147,7 +146,24 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
         }
     }
 }
-
+void apply_transformation(Matrix<double> &transformation, Matrix<uint32_t> &original, Matrix<uint32_t> &change)
+{
+    Matrix<double> inverse_transform = transformation.get_inverse();
+    for (int i = 0; i < change.getRows(); i++)
+    {
+        for (int j = 0; j < change.getCols(); j++)
+        {
+            Matrix<double> out_coordinates(1, 2, 0.0);
+            out_coordinates(0, 0) = j; //x coordinate
+            out_coordinates(0, 1) = i; //y coordinate
+            Matrix<double> in_coordinates = out_coordinates * inverse_transform;
+            double in_x = in_coordinates(0, 0);
+            double in_y = in_coordinates(0, 1);
+            change(i, j) = billinear_interpolation(in_x, in_y, original);
+            // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
+        }
+    }
+}
 
 
 int max(int a, int b) 
@@ -189,7 +205,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -214,8 +230,6 @@ int main(int argc, char* argv[])
             //pixel data to be stored in 32 bit words
             int padding = get_padding(info_header.w, info_header.bpp);
             int words = (round_bytes(info_header.w, info_header.bpp) + padding) / 4;
-            uint32_t pixel_array[info_header.h][words];
-
             if (color_table_entrys != 0)
             {
                 image.read((char *)&color_table, sizeof(color_table));
@@ -230,20 +244,7 @@ int main(int argc, char* argv[])
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
             //proccessing in the middle
-            for (int i = 0; i < output_matrix->getRows(); i++)
-            {
-                for (int j = 0; j < output_matrix->getCols(); j++)
-                {
-                    Matrix<double> out_coordinates(1, 2, 0.0);
-                    out_coordinates(0, 0) = j; //x coordinate
-                    out_coordinates(0, 1) = i; //y coordinate
-                    Matrix<double> in_coordinates = out_coordinates * inverse_transform;
-                    double in_x = in_coordinates(0, 0);
-                    double in_y = in_coordinates(0, 1);
-                    (*output_matrix)(i, j) = billinear_interpolation(in_x, in_y, (*image_matrix));
-                    // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
-                }
-            }
+            apply_transformation(transformation, *image_matrix, *output_matrix);
             std::cout << "finished interpolation" << std::endl;
 
             //test to see matrix structure
@@ -254,9 +255,6 @@ int main(int argc, char* argv[])
             //         (*output_matrix)(i, j) = pow(2, info_header.bpp) / 2;
             //     }
             // }
-            
-
-
             //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
@@ -264,16 +262,7 @@ int main(int argc, char* argv[])
             {
                 output.write((char*)&color_table, sizeof(color_table));
             }
-            //output.write((char*)pixel_array, sizeof(pixel_array));
             write_from_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*output_matrix), output);
-
-
-            cout << sizeof(image_header) << endl;
-            cout << sizeof(info_header) << endl;
-            cout << sizeof(color_table) << endl;
-            cout << sizeof(pixel_array) << endl;
-            cout << info_header.w << " " << info_header.h << endl;
-            cout << round_bytes(info_header.w, info_header.bpp) << padding << endl;
             
             //clean up
             image.close();
