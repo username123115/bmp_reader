@@ -91,7 +91,7 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
 
     // image.read((char *)&pixel_array, sizeof(pixel_array));
     // accessing rows gives x coordinates while columns give y coordinates (cartesian plane rotated 90 degrees clockwise)
-    for (int i = 0; i < h; i++)
+    for (int i = h - 1; i >= 0; i--) //read goes from bottom to top so we have to fill matrix from x = h-1 to x = 0 make sure to switch from incrementing to de-incrementing i
     {
         uint32_t padding_buffer = 0;
         for (int j = 0; j < read_col_count; j++)
@@ -100,8 +100,7 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
             file.read((char*)&content, bytes);
             for (int pixel = 0; pixel < reads_per_cycle; pixel++)
             {
-                image(j + pixel, i) = (content >> (pixel * bpp)) & read_mask;
-                debug_lol = image(j + pixel, i);
+                image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask; //x describes vertical distance and y describes horizontal difference
             } //pixel (j, i) in the pixel array is assigned to matrix(j, i) instead of (i, j)
             
             // (*image_matrix)(i, j) = content;
@@ -126,7 +125,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
         count = round_bytes(w, bpp);
     }
     // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
-    for (int i = 0; i < h; i++)
+    for (int i = h - 1; i >= 0; i--) //write from bottom of matrix to top of matrix
     {
 
         for (int j = 0; j < count; j++)
@@ -135,7 +134,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
             for (int pixel = 0; pixel < writes_per_cycle; pixel++)
             {
                 contents << bpp;
-                contents += (image(j + pixel, i)); //rows in the matrix represent x values instead of y values
+                contents += (image(i, j + pixel)); //rows in the matrix represent x values instead of y values
                 // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
             }
 
@@ -222,7 +221,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -254,8 +253,8 @@ int main(int argc, char* argv[])
             
 
             //reading to a matrix
-            Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.w, info_header.h, 0);
-            Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.w, info_header.h, 0);
+            Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0); //x goes up and down and y goes left to right (not like regular coordinates)
+            Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
             Matrix<double> inverse_transform = transformation.get_inverse();
 
