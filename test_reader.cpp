@@ -33,7 +33,7 @@ int max(int, int);
 int get_padding(int, int);
 int round_bytes(int, int);
 //potentially declare some variables as constants to avoid confusion in the future.
-void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes empty matrix with dimensions specified and reads into it, file pointer must be at pixel array
+void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes an empty matrix with specified dimensions and writes to it, file pointer must be at pixel array
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
 void apply_transformation(Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
@@ -87,8 +87,10 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
     uint32_t read_mask = pow(2, bpp) - 1;
     int bytes = bpp / 8;
     if (bytes < 1) {bytes = 1;}
+    uint32_t debug_lol;
 
     // image.read((char *)&pixel_array, sizeof(pixel_array));
+    // accessing rows gives x coordinates while columns give y coordinates (cartesian plane rotated 90 degrees clockwise)
     for (int i = 0; i < h; i++)
     {
         uint32_t padding_buffer = 0;
@@ -98,8 +100,9 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
             file.read((char*)&content, bytes);
             for (int pixel = 0; pixel < reads_per_cycle; pixel++)
             {
-                image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask;
-            }
+                image(j + pixel, i) = (content >> (pixel * bpp)) & read_mask;
+                debug_lol = image(j + pixel, i);
+            } //pixel (j, i) in the pixel array is assigned to matrix(j, i) instead of (i, j)
             
             // (*image_matrix)(i, j) = content;
         }
@@ -132,7 +135,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
             for (int pixel = 0; pixel < writes_per_cycle; pixel++)
             {
                 contents << bpp;
-                contents += (image(i, j + pixel));
+                contents += (image(j + pixel, i)); //rows in the matrix represent x values instead of y values
                 // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
             }
 
@@ -251,16 +254,21 @@ int main(int argc, char* argv[])
             
 
             //reading to a matrix
-            Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
-            Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
+            Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.w, info_header.h, 0);
+            Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.w, info_header.h, 0);
             Matrix<double> transformation("transformation.txt");
             Matrix<double> inverse_transform = transformation.get_inverse();
+
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
             //proccessing in the middle
             apply_transformation(transformation, *image_matrix, *output_matrix);
             //test to see matrix structure
             apply_test_watermark((*output_matrix), info_header.bpp);
+
+            apply_test_watermark((*image_matrix), info_header.bpp);
+
+
             //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
@@ -269,7 +277,7 @@ int main(int argc, char* argv[])
             {
                 output.write((char*)&color_table, sizeof(color_table));
             }
-            write_from_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*output_matrix), output);
+            write_from_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*output_matrix), output); //changed output matrix to image_matrix for testing
             
             //clean up
             image.close();
