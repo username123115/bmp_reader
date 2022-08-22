@@ -35,39 +35,62 @@ int round_bytes(int, int);
 //potentially declare some variables as constants to avoid confusion in the future.
 void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstream &); //takes an empty matrix with specified dimensions and writes to it, file pointer must be at pixel array
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
-void apply_transformation(Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
+void apply_transformation(uint16_t, Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
-
-uint32_t billinear_interpolation(double, double, Matrix<uint32_t> &);
-uint32_t billinear_interpolation(double x, double y, Matrix<uint32_t> &image)
+uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
+uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
+uint32_t get_default(unsigned x, unsigned y, Matrix<uint32_t> &mat, unsigned d = 0)
 {
-    float debugx = 0.1;
-    float debugy = 1.3;
-    int x_low = floor(x);
-    int y_low = floor(y) + 1; //the higher the y value the lower down in the picture
-    double xleft = x - x_low;
-    double xright = 1 - xleft;
-    double ybottom = y_low - y;
-    double ytop = 1 - ybottom;
-    uint32_t ll, lr, ul, ur;
+    unsigned maxw = mat.getCols();
+    unsigned maxh = mat.getRows();
+    if ((0 <= x) && (x < maxw - 1))
+    {
+        if ((0 <= y) && (y < maxh - 1))
+        {
+            return mat(x, y);
+        }
+    }
+    return d;
+}
+
+uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32_t> &image)
+{
+    int x_high = floor(x); //x = 0 is the highest point on the image
+    int y_low = floor(y);
+    //weights are: vertical (high / low), horizontal (left / right)
+    double vhigh = x - x_high;
+    double vlow = 1 - vhigh;
+    double hleft = y - y_low;
+    double hright = 1 - hleft;  
+    double ll, lr, ul, ur;
+    int bytes_per_color = bpp / 4; //only applicable to bpp >= 8
+    uint32_t red_mask = (pow(2, bytes_per_color) - 1);
+    uint32_t green_mask = (pow(2, bytes_per_color) - 1);
+    uint32_t blue_mask = (pow(2, bytes_per_color) - 1);
+    red_mask = red_mask << (bytes_per_color * 3);
+    green_mask = green_mask << (bytes_per_color * 2);
+    blue_mask = green_mask << (bytes_per_color * 1);
+
+    uint32_t result;
+    double sum;
+
     unsigned maxw = image.getCols();
     unsigned maxh = image.getRows();
+
+    ll = get_default(x_high + 1, y_low, image);
+    lr = get_default(x_high + 1, y_low + 1, image);
+    ul = get_default(x_high, y_low, image);
+    ur = get_default(x_high, y_low + 1, image);
+
+    sum = ll * vhigh * hright;
+    sum += lr * vhigh * hleft;
+    sum += ul * vlow * hright;
+    sum += ur * vlow * hleft;
+    
+    // sum = ll;
+    result = round(sum);
+    return result;
     // return 0;
-    if ((x_low < 1) or (x_low > maxw - 1))
-    {
-        return 0;
-    }
-    if ((y_low < 1) or (y_low > maxh - 2))
-    {
-        return 0;
-    }
-    ll = image(y_low + 1, x_low - 1);
-    ul = image(y_low - 1, x_low - 1);
-    lr = image(y_low + 1, x_low + 1);
-    ur = image(y_low - 1, x_low + 1);
-    uint32_t sum = (ll * xright * ytop) + (ul * xright * ybottom) + (lr * xleft * ytop) + (ur * xleft * ybottom);
-    // return sum;
-    return ll;
 
 
 }
@@ -149,7 +172,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
         }
     }
 }
-void apply_transformation(Matrix<double> &transformation, Matrix<uint32_t> &original, Matrix<uint32_t> &change)
+void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<uint32_t> &original, Matrix<uint32_t> &change)
 {
     Matrix<double> inverse_transform = transformation.get_inverse();
     for (int i = 0; i < change.getRows(); i++)
@@ -157,15 +180,17 @@ void apply_transformation(Matrix<double> &transformation, Matrix<uint32_t> &orig
         for (int j = 0; j < change.getCols(); j++)
         {
             Matrix<double> out_coordinates(1, 2, 0.0);
-            out_coordinates(0, 0) = j; //x coordinate
-            out_coordinates(0, 1) = i; //y coordinate
+            out_coordinates(0, 0) = i; //x coordinate
+            out_coordinates(0, 1) = j; //y coordinate
             Matrix<double> in_coordinates = out_coordinates * inverse_transform;
             double in_x = in_coordinates(0, 0);
             double in_y = in_coordinates(0, 1);
-            change(i, j) = billinear_interpolation(in_x, in_y, original);
+            change(i, j) = billinear_interpolation(in_x, in_y, bpp, original);
             // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
         }
     }
+    std::cout << "applied transformation: " << std::endl;
+    transformation.print();
 }
 void apply_test_watermark(Matrix<uint32_t> &image, uint16_t bpp = 1)
 {
@@ -221,7 +246,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
+    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -261,11 +286,9 @@ int main(int argc, char* argv[])
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
             //proccessing in the middle
-            apply_transformation(transformation, *image_matrix, *output_matrix);
+            apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
             //test to see matrix structure
-            apply_test_watermark((*output_matrix), info_header.bpp);
-
-            apply_test_watermark((*image_matrix), info_header.bpp);
+            // apply_test_watermark((*output_matrix), info_header.bpp);
 
 
             //writing to the output
