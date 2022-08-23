@@ -41,8 +41,8 @@ uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
 uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
 uint32_t get_default(unsigned x, unsigned y, Matrix<uint32_t> &mat, unsigned d = 0)
 {
-    unsigned maxw = mat.getCols();
-    unsigned maxh = mat.getRows();
+    unsigned maxw = mat.getRows();
+    unsigned maxh = mat.getCols();
     if ((0 <= x) && (x < maxw - 1))
     {
         if ((0 <= y) && (y < maxh - 1))
@@ -53,6 +53,7 @@ uint32_t get_default(unsigned x, unsigned y, Matrix<uint32_t> &mat, unsigned d =
     return d;
 }
 
+//given the coordinates of output mapped into the input, find a approximation for the value it should be
 uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32_t> &image)
 {
     int x_high = floor(x); //x = 0 is the highest point on the image
@@ -62,14 +63,14 @@ uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32
     double vlow = 1 - vhigh;
     double hleft = y - y_low;
     double hright = 1 - hleft;  
-    double ll, lr, ul, ur;
-    int bytes_per_color = bpp / 4; //only applicable to bpp >= 8
-    uint32_t red_mask = (pow(2, bytes_per_color) - 1);
-    uint32_t green_mask = (pow(2, bytes_per_color) - 1);
-    uint32_t blue_mask = (pow(2, bytes_per_color) - 1);
-    red_mask = red_mask << (bytes_per_color * 3);
-    green_mask = green_mask << (bytes_per_color * 2);
-    blue_mask = green_mask << (bytes_per_color * 1);
+    uint32_t ll, lr, ul, ur;
+    int bits_per_color = bpp / 4; //only applicable to bpp >= 8
+    uint32_t chunk = (pow(2, bits_per_color)) - 1;
+    uint32_t red_mask = chunk << (bits_per_color * 3);
+    uint32_t green_mask = chunk << (bits_per_color * 2);
+    uint32_t blue_mask = chunk << (bits_per_color * 1);
+    uint32_t alpha_mask = chunk;
+    uint32_t color_masks[] = {red_mask, green_mask, blue_mask, alpha_mask};
 
     uint32_t result;
     double sum;
@@ -82,13 +83,20 @@ uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32
     ul = get_default(x_high, y_low, image);
     ur = get_default(x_high, y_low + 1, image);
 
-    sum = ll * vhigh * hright;
-    sum += lr * vhigh * hleft;
-    sum += ul * vlow * hright;
-    sum += ur * vlow * hleft;
+    for (int i = 0; i < 4; i++)
+    {
+        sum = ((ll & color_masks[i]) >> (3 - i)) * vhigh * hright; //remove unneccesary bits and shift right to get values represneted by target bits
+        sum += ((lr & color_masks[i]) >> (3 - i)) * vhigh * hleft;
+        sum += ((ul & color_masks[i]) >> (3 - i)) * vlow * hright;
+        sum += ((ur & color_masks[i]) >> (3 - i)) * vlow * hleft;
+        result << bits_per_color;
+        result += round(sum);
+        sum = 0;
+    }
+    result = (result & color_masks[1]);
+
     
     // sum = ll;
-    result = round(sum);
     return result;
     // return 0;
 
@@ -246,7 +254,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("bitmap_test.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
