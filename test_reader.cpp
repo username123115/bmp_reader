@@ -205,6 +205,42 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
 }
 void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<uint32_t> &original, Matrix<uint32_t> &change)
 {
+    if (transformation.getCols() != transformation.getRows())
+    {
+        cout << "Matrix must have same number of rows and columns" << endl;
+        exit(1);
+    }
+    if (!((transformation.getCols() == 2) or (transformation.getRows() == 2)))
+    {
+        cout << "Matrix must have 2 or 3 rows and columns" << endl;
+        exit(1);
+    }
+    
+    Matrix<double> transform(3, 3, 0.0);
+    if ((transformation.getCols() == 2) && (transformation.getRows() == 2))
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+            {
+                transform(i, j) = transformation(i, j);
+            }
+        }
+        transform(2, 2) = 1;
+    }
+    if ((transformation.getCols() == 3) && (transformation.getRows() == 3))
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                transform(i, j) = transformation(i, j);
+            }
+        }
+    }
+
+
+
     Matrix<double> inverse_transform = transformation.get_inverse();
     for (int i = 0; i < change.getRows(); i++)
     {
