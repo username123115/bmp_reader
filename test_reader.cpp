@@ -93,11 +93,11 @@ uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32
         result += round(sum);
         sum = 0;
     }
-    result = (result & color_masks[1]);
+    // result = (result & color_masks[1]);
 
     
-    // sum = ll;
     return result;
+    // return round(ll);
     // return 0;
 
 
