@@ -37,8 +37,12 @@ void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstr
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
 void apply_transformation(uint16_t, Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
+// void apply_rotation(double, double, double, Matrix<uint32_t> &, Matrix<uint32_t> &);
+
 uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
 uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
+uint32_t linear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
+
 uint32_t get_default(unsigned x, unsigned y, Matrix<uint32_t> &mat, unsigned d = 0)
 {
     unsigned maxw = mat.getRows();
@@ -51,6 +55,25 @@ uint32_t get_default(unsigned x, unsigned y, Matrix<uint32_t> &mat, unsigned d =
         }
     }
     return d;
+}
+uint32_t linear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32_t> & image)
+{
+    int x_high = floor(x);
+    int y_low = floor(y);
+    double vhigh = x - x_high;
+    double hleft = y - y_low;
+    int xnear = x_high; //top left
+    int ynear = y_low;
+    if (vhigh > 0.5)
+    {
+        xnear += 1;
+    }
+    if (hleft > 0.5)
+    {
+        ynear += 1;
+    }
+    return get_default(xnear, ynear, image);
+
 }
 
 //given the coordinates of output mapped into the input, find a approximation for the value it should be
@@ -193,7 +216,7 @@ void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<u
             Matrix<double> in_coordinates = out_coordinates * inverse_transform;
             double in_x = in_coordinates(0, 0);
             double in_y = in_coordinates(0, 1);
-            change(i, j) = billinear_interpolation(in_x, in_y, bpp, original);
+            change(i, j) = linear_interpolation(in_x, in_y, bpp, original);
             // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
         }
     }
@@ -254,7 +277,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("bitmap_test.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
