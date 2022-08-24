@@ -210,7 +210,7 @@ void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<u
         cout << "Matrix must have same number of rows and columns" << endl;
         exit(1);
     }
-    if (!((transformation.getCols() == 2) or (transformation.getRows() == 2)))
+    if (!((transformation.getCols() == 2) or (transformation.getRows() == 3)))
     {
         cout << "Matrix must have 2 or 3 rows and columns" << endl;
         exit(1);
@@ -240,24 +240,33 @@ void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<u
     }
 
 
-
-    Matrix<double> inverse_transform = transformation.get_inverse();
+    Matrix<double> test = transform.get_inverse();
+    // Matrix<double> inverse_transform = transformation.get_inverse();
     for (int i = 0; i < change.getRows(); i++)
     {
         for (int j = 0; j < change.getCols(); j++)
         {
-            Matrix<double> out_coordinates(1, 2, 0.0);
+            Matrix<double> out_coordinates(1, 3, 0.0);
             out_coordinates(0, 0) = i; //x coordinate
             out_coordinates(0, 1) = j; //y coordinate
-            Matrix<double> in_coordinates = out_coordinates * inverse_transform;
+            out_coordinates(0, 2) = 1; //For moving the images a 3 dimensional matrix is used
+            // Matrix<double> in_coordinates = out_coordinates * inverse_transform;
+            Matrix<double> in_coordinates = out_coordinates * test;
             double in_x = in_coordinates(0, 0);
             double in_y = in_coordinates(0, 1);
             change(i, j) = linear_interpolation(in_x, in_y, bpp, original);
             // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
+            if ((i == 234) && (j == 142))
+            {
+                out_coordinates.print();
+                test.print();
+                in_coordinates.print();
+
+            }
         }
     }
     std::cout << "applied transformation: " << std::endl;
-    transformation.print();
+    transform.print();
 }
 void apply_test_watermark(Matrix<uint32_t> &image, uint16_t bpp = 1)
 {
@@ -313,7 +322,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
+    ifstream image("swirlyline.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -348,7 +357,9 @@ int main(int argc, char* argv[])
             Matrix<uint32_t> *image_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0); //x goes up and down and y goes left to right (not like regular coordinates)
             Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
-            Matrix<double> inverse_transform = transformation.get_inverse();
+            Matrix<double> shift("move.txt");
+            // transformation = transformation * shift;
+            transformation = shift;
 
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
