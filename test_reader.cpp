@@ -37,7 +37,7 @@ void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstr
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
 void apply_transformation(uint16_t, Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
-// void apply_rotation(double, double, double, Matrix<uint32_t> &, Matrix<uint32_t> &);
+// void apply_rotation(uint16_t, Matrix<uint32_t> &, Matrix<uint32_t> &);
 
 uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
 uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
@@ -205,18 +205,25 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
 }
 void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<uint32_t> &original, Matrix<uint32_t> &change)
 {
+    Matrix<double> transform(3, 3, 0.0);
     if (transformation.getCols() != transformation.getRows())
     {
         cout << "Matrix must have same number of rows and columns" << endl;
-        exit(1);
+        for (int i = 0; i < 3; i++)
+        {
+            transform(i, i) = 1;
+        }
     }
     if (!((transformation.getCols() == 2) or (transformation.getRows() == 3)))
     {
         cout << "Matrix must have 2 or 3 rows and columns" << endl;
-        exit(1);
+        for (int i = 0; i < 3; i++)
+        {
+            transform(i, i) = 1;
+        }
     }
     
-    Matrix<double> transform(3, 3, 0.0);
+    
     if ((transformation.getCols() == 2) && (transformation.getRows() == 2))
     {
         for (int i = 0; i < 2; i++)
@@ -256,13 +263,6 @@ void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<u
             double in_y = in_coordinates(0, 1);
             change(i, j) = linear_interpolation(in_x, in_y, bpp, original);
             // (*output_matrix)(i, j) = (*image_matrix)(in_y, in_x);
-            if ((i == 234) && (j == 142))
-            {
-                out_coordinates.print();
-                test.print();
-                in_coordinates.print();
-
-            }
         }
     }
     std::cout << "applied transformation: " << std::endl;
@@ -358,8 +358,8 @@ int main(int argc, char* argv[])
             Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
             Matrix<double> shift("move.txt");
-            // transformation = transformation * shift;
-            transformation = shift;
+            transformation = transformation * shift;
+            // transformation = shift;
 
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
