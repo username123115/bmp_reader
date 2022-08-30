@@ -37,7 +37,7 @@ void read_to_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ifstr
 void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, ofstream &); //takes image matrix with dimensions specified and writes from it, file pointer must be at pixel array
 void apply_transformation(uint16_t, Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
-// void apply_rotation(uint16_t, Matrix<uint32_t> &, Matrix<uint32_t> &);
+void apply_rotation(uint16_t, double, Matrix<uint32_t> &, Matrix<uint32_t> &, double, double);
 
 uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
 uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
@@ -268,6 +268,20 @@ void apply_transformation(uint16_t bpp, Matrix<double> &transformation, Matrix<u
     std::cout << "applied transformation: " << std::endl;
     transform.print();
 }
+void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matrix<uint32_t> & change, double x_proportion = 0, double y_proportion = 0)
+{
+    double theta = angle * 2 * M_PI / 360;
+    Matrix<double> transform(3, 3, 0.0);
+    double cos_theta = cos(theta);
+    double sin_theta = sin(theta);
+    transform(2, 2) = 1;
+    transform(0, 0) = cos_theta;
+    transform(1, 1) = cos_theta;
+    transform(0, 1) = (-1) * sin_theta;
+    transform(1, 0) = sin_theta;
+    apply_transformation(bpp, transform, original, change);
+
+}
 void apply_test_watermark(Matrix<uint32_t> &image, uint16_t bpp = 1)
 {
     if ((image.getCols() >= 25) && (image.getRows() >= 10))
@@ -364,9 +378,8 @@ int main(int argc, char* argv[])
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
             //proccessing in the middle
-            apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
-            //test to see matrix structure
-            // apply_test_watermark((*output_matrix), info_header.bpp);
+            // apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
+            apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix);
 
 
             //writing to the output
