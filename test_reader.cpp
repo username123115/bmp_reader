@@ -272,6 +272,8 @@ void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matr
 {
     double theta = angle * 2 * M_PI / 360;
     Matrix<double> transform(3, 3, 0.0);
+    Matrix<double> pivot_point(3, 1, 0.0);
+    Matrix<double> pivot_out(3, 1, 0.0);
     double cos_theta = cos(theta);
     double sin_theta = sin(theta);
     transform(2, 2) = 1;
@@ -279,6 +281,17 @@ void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matr
     transform(1, 1) = cos_theta;
     transform(0, 1) = (-1) * sin_theta;
     transform(1, 0) = sin_theta;
+
+
+    pivot_point(0, 0) = original.getRows() * x_proportion - 1;
+    pivot_point(1, 0) = original.getCols() * y_proportion - 1;
+    pivot_point(2, 0) = 1;
+    // pivot_out = (pivot_point * transform);
+    // transform(2, 0) = pivot_out(0, 0);
+    // transform(2, 1) = pivot_out(1, 0);
+
+
+
     apply_transformation(bpp, transform, original, change);
 
 }
@@ -373,7 +386,6 @@ int main(int argc, char* argv[])
             Matrix<double> transformation("transformation.txt");
             Matrix<double> shift("move.txt");
             transformation = transformation * shift;
-            // transformation = shift;
 
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
