@@ -112,7 +112,7 @@ uint32_t billinear_interpolation(double x, double y, uint16_t bpp, Matrix<uint32
         sum += ((lr & color_masks[i]) >> (3 - i)) * vhigh * hleft;
         sum += ((ul & color_masks[i]) >> (3 - i)) * vlow * hright;
         sum += ((ur & color_masks[i]) >> (3 - i)) * vlow * hleft;
-        result << bits_per_color;
+        // result << bits_per_color; operation doesn't actually change result and is throwing a compiler warning lol
         result += round(sum);
         sum = 0;
     }
@@ -187,7 +187,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
             uint32_t contents = 0;
             for (int pixel = 0; pixel < writes_per_cycle; pixel++)
             {
-                contents << bpp;
+                contents = contents << bpp;
                 contents += (image(i, j + pixel)); //rows in the matrix represent x values instead of y values
                 // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
             }
@@ -272,8 +272,8 @@ void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matr
 {
     double theta = angle * 2 * M_PI / 360;
     Matrix<double> transform(3, 3, 0.0);
-    Matrix<double> pivot_point(3, 1, 0.0);
-    Matrix<double> pivot_out(3, 1, 0.0);
+    Matrix<double> pivot_point(1, 3, 0.0);
+    Matrix<double> pivot_out(1, 3, 0.0);
     double cos_theta = cos(theta);
     double sin_theta = sin(theta);
     transform(2, 2) = 1;
@@ -283,12 +283,12 @@ void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matr
     transform(1, 0) = sin_theta;
 
 
-    pivot_point(0, 0) = original.getRows() * x_proportion - 1;
-    pivot_point(1, 0) = original.getCols() * y_proportion - 1;
-    pivot_point(2, 0) = 1;
-    // pivot_out = (pivot_point * transform);
-    // transform(2, 0) = pivot_out(0, 0);
-    // transform(2, 1) = pivot_out(1, 0);
+    pivot_point(0, 0) = (original.getRows() - 1) * x_proportion;
+    pivot_point(0, 1) = (original.getCols() - 1) * y_proportion;
+    pivot_point(0, 2) = 1;
+    pivot_out = ((pivot_point * transform) - pivot_point) * -1;
+    transform(2, 0) = pivot_out(0, 0);
+    transform(2, 1) = pivot_out(1, 0);
 
 
 
