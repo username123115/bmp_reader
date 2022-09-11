@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "~/desktop/projects/lib/matrix/"
+                "/mnt/c/Users/Public/Downloads/lib/matrix/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

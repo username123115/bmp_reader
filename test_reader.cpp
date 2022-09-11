@@ -283,10 +283,10 @@ void apply_rotation(uint16_t bpp, double angle, Matrix<uint32_t> &original, Matr
     transform(1, 0) = sin_theta;
 
 
-    pivot_point(0, 0) = (original.getRows() - 1) * x_proportion;
-    pivot_point(0, 1) = (original.getCols() - 1) * y_proportion;
-    pivot_point(0, 2) = 1;
-    pivot_out = ((pivot_point * transform) - pivot_point) * -1;
+    pivot_point(0, 0) = original.getRows() * x_proportion - 1;
+    pivot_point(1, 0) = original.getCols() * y_proportion - 1;
+    pivot_point(2, 0) = 1;
+    pivot_out = (pivot_point * transform);
     transform(2, 0) = pivot_out(0, 0);
     transform(2, 1) = pivot_out(1, 0);
 
@@ -391,7 +391,7 @@ int main(int argc, char* argv[])
 
             //proccessing in the middle
             // apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
-            apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix);
+            apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix, 0, 0);
 
 
             //writing to the output
