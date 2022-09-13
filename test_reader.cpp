@@ -141,7 +141,6 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
     uint32_t read_mask = pow(2, bpp) - 1;
     int bytes = bpp / 8;
     if (bytes < 1) {bytes = 1;}
-    uint32_t debug_lol;
 
     // image.read((char *)&pixel_array, sizeof(pixel_array));
     // accessing rows gives x coordinates while columns give y coordinates (cartesian plane rotated 90 degrees clockwise)
@@ -154,7 +153,8 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
             file.read((char*)&content, bytes);
             for (int pixel = 0; pixel < reads_per_cycle; pixel++)
             {
-                image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask; //x describes vertical distance and y describes horizontal difference
+                //image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask; //x describes vertical distance and y describes horizontal difference
+                image(i, j + pixel) = (content & (read_mask << (pixel * bpp)));
             } //pixel (j, i) in the pixel array is assigned to matrix(j, i) instead of (i, j)
             
             // (*image_matrix)(i, j) = content;
@@ -178,6 +178,9 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
     {
         count = round_bytes(w, bpp);
     }
+    int bytes_out = bpp / 8;
+    if (bytes_out < 1) {bytes_out = 1;}
+
     // if bpp less then one pack (8 / bpp) pixels = one byte into each write, this also writes an even amount of bytes, helping with padding
     for (int i = h - 1; i >= 0; i--) //write from bottom of matrix to top of matrix
     {
@@ -191,9 +194,6 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
                 contents += (image(i, j + pixel)); //rows in the matrix represent x values instead of y values
                 // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
             }
-
-            int bytes_out = bpp / 8;
-            if (bytes_out < 1) {bytes_out = 1;}
             file.write((char *)&contents, bytes_out);
         }
         for (int k = 0; k < padding; k++)
@@ -349,7 +349,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("swirlyline.bmp", ios_base::in | ios_base::binary);
+    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -385,13 +385,13 @@ int main(int argc, char* argv[])
             Matrix<uint32_t> *output_matrix = new Matrix<uint32_t>(info_header.h, info_header.w, 0);
             Matrix<double> transformation("transformation.txt");
             Matrix<double> shift("move.txt");
-            transformation = transformation * shift;
+            // transformation = transformation * shift;
 
             read_to_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*image_matrix), image);
 
             //proccessing in the middle
-            // apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
-            apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix, 0, 0);
+            apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
+            // apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix, 0, 0);
 
 
             //writing to the output
