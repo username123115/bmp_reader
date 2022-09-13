@@ -151,7 +151,7 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
         {
             uint32_t content = 0;        
             file.read((char*)&content, bytes);
-            for (int pixel = 0; pixel < reads_per_cycle; pixel++)
+            for (int pixel = reads_per_cycle - 1; pixel >= 0; pixel--)
             {
                 //image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask; //x describes vertical distance and y describes horizontal difference
                 image(i, j + pixel) = (content & (read_mask << (pixel * bpp)));
