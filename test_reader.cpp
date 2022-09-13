@@ -38,6 +38,7 @@ void write_from_matrix(uint32_t, uint32_t, uint16_t, int, Matrix<uint32_t> &, of
 void apply_transformation(uint16_t, Matrix<double> &, Matrix<uint32_t> &, Matrix<uint32_t> &); //takes end matrix and applys inverse of transform matrix before interpolating, changing image
 void apply_test_watermark(Matrix<uint32_t> &, uint16_t);
 void apply_rotation(uint16_t, double, Matrix<uint32_t> &, Matrix<uint32_t> &, double, double);
+void bring_attention();
 
 uint32_t get_default(unsigned, unsigned, Matrix<uint32_t> &, unsigned);
 uint32_t billinear_interpolation(double, double, uint16_t, Matrix<uint32_t> &);
@@ -142,28 +143,28 @@ void read_to_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<ui
     int bytes = bpp / 8;
     if (bytes < 1) {bytes = 1;}
 
-    // image.read((char *)&pixel_array, sizeof(pixel_array));
     // accessing rows gives x coordinates while columns give y coordinates (cartesian plane rotated 90 degrees clockwise)
     for (int i = h - 1; i >= 0; i--) //read goes from bottom to top so we have to fill matrix from x = h-1 to x = 0 make sure to switch from incrementing to de-incrementing i
     {
         uint32_t padding_buffer = 0;
         for (int j = 0; j < read_col_count; j++)
         {
-            uint32_t content = 0;        
+            uint32_t content = 0;
             file.read((char*)&content, bytes);
+            
+            // if (!(content == 255) && !(content == 254)) {bring_attention();} 
+
+            //should have no effect for bpp > 8 because pixel will be set to zero, not effecting the read mask while the loop only runs once
             for (int pixel = reads_per_cycle - 1; pixel >= 0; pixel--)
             {
-                //image(i, j + pixel) = (content >> (pixel * bpp)) & read_mask; //x describes vertical distance and y describes horizontal difference
-                image(i, j + pixel) = (content & (read_mask << (pixel * bpp)));
+                uint32_t pixel_data = (content & (read_mask << (pixel * bpp))) >> (pixel * bpp);
+                if (!(pixel_data == 1)) {bring_attention();}
+                //bpp > 8 will not be effected by this as it will be accessing (i, j)
+                image(i, j * reads_per_cycle + reads_per_cycle - 1 - pixel) = pixel_data;
             } //pixel (j, i) in the pixel array is assigned to matrix(j, i) instead of (i, j)
             
-            // (*image_matrix)(i, j) = content;
         }
         file.read((char*)&padding_buffer, padding);
-        // for (int i = 0; i < words; i++)
-        // {
-        //     pixel_array[j][i] = (~pixel_array[j][i]);
-        // }
     }
 }
 void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix<uint32_t> &image, ofstream &file)
@@ -308,7 +309,10 @@ void apply_test_watermark(Matrix<uint32_t> &image, uint16_t bpp = 1)
         }
     }
 }
-
+void bring_attention() {
+    static uint32_t non_full = 0;
+    non_full += 1;
+}
 
 int max(int a, int b) 
 {
@@ -349,7 +353,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("8bpp.bmp", ios_base::in | ios_base::binary);
+    ifstream image("1bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
