@@ -192,7 +192,7 @@ void write_from_matrix(uint32_t w, uint32_t h, uint16_t bpp, int padding, Matrix
             for (int pixel = 0; pixel < writes_per_cycle; pixel++)
             {
                 contents = contents << bpp;
-                contents += (image(i, j + pixel)); //rows in the matrix represent x values instead of y values
+                contents += (image(i, j * writes_per_cycle + pixel)); //rows in the matrix represent x values instead of y values
                 // contents << ((*image_matrix)(i, j + pixel) >> (info_header.bpp)); //pixel pixels into contents before writing, maximum 8 pixels for 1 bpp images 
             }
             file.write((char *)&contents, bytes_out);
@@ -353,7 +353,7 @@ int round_bytes(int w, int bpp)
 using namespace std;
 int main(int argc, char* argv[]) 
 {
-    ifstream image("1bpp2.bmp", ios_base::in | ios_base::binary);
+    ifstream image("24bpp2.bmp", ios_base::in | ios_base::binary);
     ofstream output("bitmap_output.bmp", ios_base::binary);
     if (!image.is_open()) 
     {
@@ -397,7 +397,6 @@ int main(int argc, char* argv[])
             apply_transformation(info_header.bpp, transformation, *image_matrix, *output_matrix);
             // apply_rotation(info_header.bpp, 35, *image_matrix, *output_matrix, 0, 0);
 
-
             //writing to the output
             output.write((char*)&image_header, sizeof(Header));
             output.write((char*)&info_header, sizeof(BMP_info_header));
@@ -406,8 +405,9 @@ int main(int argc, char* argv[])
             {
                 output.write((char*)&color_table, sizeof(color_table));
             }
+
             write_from_matrix(info_header.w, info_header.h, info_header.bpp, padding, (*output_matrix), output); //changed output matrix to image_matrix for testing
-            
+
             //clean up
             image.close();
             output.close();
